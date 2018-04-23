@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.misc.Interval;
+import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +109,7 @@ public class KsqlEngine implements Closeable, QueryTerminator {
   private final FunctionRegistry functionRegistry;
 
   private SchemaRegistryClient schemaRegistryClient;
+  private KafkaClientSupplier clientSupplier;
 
 
   public KsqlEngine(final KsqlConfig ksqlConfig, final KafkaTopicClient topicClient) {
@@ -128,6 +130,22 @@ public class KsqlEngine implements Closeable, QueryTerminator {
       final SchemaRegistryClient schemaRegistryClient,
       final MetaStore metaStore
   ) {
+    this(
+        ksqlConfig,
+        topicClient,
+        schemaRegistryClient,
+        null,
+        metaStore
+    );
+  }
+
+  public KsqlEngine(
+      final KsqlConfig ksqlConfig,
+      final KafkaTopicClient topicClient,
+      final SchemaRegistryClient schemaRegistryClient,
+      final KafkaClientSupplier clientSupplier,
+      final MetaStore metaStore
+  ) {
     Objects.requireNonNull(ksqlConfig, "ksqlConfig can't be null");
     Objects.requireNonNull(topicClient, "topicClient can't be null");
     Objects.requireNonNull(schemaRegistryClient, "schemaRegistryClient can't be null");
@@ -143,7 +161,7 @@ public class KsqlEngine implements Closeable, QueryTerminator {
     this.allLiveQueries = new HashSet<>();
     this.functionRegistry = new FunctionRegistry();
     this.schemaRegistryClient = schemaRegistryClient;
-
+    this.clientSupplier = clientSupplier;
     this.engineMetrics = new KsqlEngineMetrics("ksql-engine", this);
     this.aggregateMetricsCollector = Executors.newSingleThreadScheduledExecutor();
     aggregateMetricsCollector.scheduleAtFixedRate(
@@ -204,6 +222,7 @@ public class KsqlEngine implements Closeable, QueryTerminator {
         logicalPlans,
         statementList,
         overriddenProperties,
+        clientSupplier,
         true
     );
 
@@ -232,6 +251,7 @@ public class KsqlEngine implements Closeable, QueryTerminator {
         logicalPlans,
         Collections.singletonList(new Pair<>("", query)),
         Collections.emptyMap(),
+        clientSupplier,
         false
     );
     return runningQueries.get(0);

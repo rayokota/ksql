@@ -18,6 +18,7 @@ package io.confluent.ksql;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,7 @@ import io.confluent.ksql.parser.tree.SelectItem;
 import io.confluent.ksql.parser.tree.SingleColumn;
 import io.confluent.ksql.parser.tree.Statement;
 import io.confluent.ksql.parser.tree.StringLiteral;
+import io.confluent.ksql.physical.KafkaStreamsBuilderImpl;
 import io.confluent.ksql.physical.PhysicalPlanBuilder;
 import io.confluent.ksql.planner.LogicalPlanner;
 import io.confluent.ksql.planner.plan.KsqlStructuredDataOutputNode;
@@ -139,6 +141,7 @@ class QueryEngine {
       final List<Pair<String, PlanNode>> logicalPlans,
       final List<Pair<String, Statement>> statementList,
       final Map<String, Object> overriddenProperties,
+      final KafkaClientSupplier clientSupplier,
       final boolean updateMetastore
   ) throws Exception {
 
@@ -161,7 +164,7 @@ class QueryEngine {
       } else {
         buildQueryPhysicalPlan(
             physicalPlans, statementPlanPair,
-            overriddenProperties, updateMetastore
+            overriddenProperties, clientSupplier, updateMetastore
         );
       }
 
@@ -173,6 +176,7 @@ class QueryEngine {
       final List<QueryMetadata> physicalPlans,
       final Pair<String, PlanNode> statementPlanPair,
       final Map<String, Object> overriddenProperties,
+      final KafkaClientSupplier clientSupplier,
       final boolean updateMetastore
   ) throws Exception {
 
@@ -188,7 +192,8 @@ class QueryEngine {
         overriddenProperties,
         updateMetastore,
         ksqlEngine.getMetaStore(),
-        ksqlEngine.getSchemaRegistryClient()
+        ksqlEngine.getSchemaRegistryClient(),
+        new KafkaStreamsBuilderImpl(clientSupplier)
     );
 
     physicalPlans.add(physicalPlanBuilder.buildPhysicalPlan(statementPlanPair));
